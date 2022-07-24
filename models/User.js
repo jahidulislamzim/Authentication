@@ -22,7 +22,7 @@ const userSchema = new Schema({
         type:Boolean,
         required: true
     }
-});
+}, { versionKey: false });
 
 
 //Model

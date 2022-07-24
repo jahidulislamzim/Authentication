@@ -2,7 +2,7 @@ const UserModel = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-
+//User Regintration Function 
 const userRegistration = async (req, res) =>{
     const {name, email, password, password_confiramation, tc} = req.body; 
     
@@ -30,6 +30,16 @@ const userRegistration = async (req, res) =>{
                 })
 
                 await document.save();
+
+                // get new registered user
+
+                const savedUser = await UserModel.findOne({email:email});
+                
+                //Generate JWT Token
+
+                const token = jwt.sign({userID:savedUser._id}, process.env.JWT_SECRET_KEY, {expiresIn: "5d"})
+
+                res.status(201).send({"status":"success", "message":"User Registred Successful", "token": token})
                 }catch(error){
                     res.send({"status":"failed", "message":"Unable to register"})
                 }
@@ -44,4 +54,34 @@ const userRegistration = async (req, res) =>{
     
 }
 
-module.exports = userRegistration;
+
+//User Login Function 
+const userLogin = async (req, res) =>{
+    try{
+        const {email, password} = req.body;
+        if(email && password){
+            const user = await UserModel.findOne({email: email});
+            if(user != null){
+                const isMatchPassword = await bcrypt.compare(password, user.password);
+                if((user.email === email) && isMatchPassword){
+                    //Generate JWT Token 
+                    const token = jwt.sign({userID:user._id}, process.env.JWT_SECRET_KEY)
+                    res.send({"status":"success", "message":"Login Successful!", "token":token}) 
+                }else{
+                    res.send({"status":"failed", "message":"Email or Password is not valid"}) 
+                }
+
+            }else{
+                res.send({"status":"failed", "message":"You are not registered user"})
+            }
+        }else{
+            res.send({"status":"failed", "message":"All fields are required"})
+        }
+    }catch(error){
+        console.log(error)
+    }
+}
+
+
+
+module.exports = {userRegistration , userLogin} ;

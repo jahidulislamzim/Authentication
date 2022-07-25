@@ -25,6 +25,10 @@ const userSchema = new Schema({
 }, { versionKey: false });
 
 
+//Note: { versionKey: false } for remove __v (version number) from database;
+
+//Note: tc meaning Terms & Conditions
+
 //Model
 const UserModel = model("user", userSchema);
 

@@ -1,6 +1,9 @@
 const UserModel = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const transporter = require('../configs/emailConfig');
+const dotenv = require('dotenv');
+dotenv.config();
 
 //User Regintration Function 
 const userRegistration = async (req, res) => {
@@ -36,14 +39,13 @@ const userRegistration = async (req, res) => {
                     const savedUser = await UserModel.findOne({ email: email });
 
                     //Generate JWT Token
-
+                
                     const token = jwt.sign({ userID: savedUser._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" })
 
                     res.status(201).send({ "status": "success", "message": "User Registred Successful", "token": token })
                 } catch (error) {
                     res.send({ "status": "failed", "message": "Unable to register" })
                 }
-
             } else {
                 res.send({ "status": "failed", "message": "Password and Confirm Password dosen't match" });
             }
@@ -53,6 +55,8 @@ const userRegistration = async (req, res) => {
     }
 
 }
+
+
 
 
 //User Login Function 
@@ -115,6 +119,85 @@ const changeUserPassword = async (req, res) => {
     }
 }
 
+//Get User Details
+const loggedUser = async (req, res) => {
+    res.send({ "user": req.user })
+}
+
+//Create Reset Password Link
+const getResetPasswordLink = async (req, res) => {
+    const { email } = req.body;
+    if (email) {
+        //Find user from database
+        const user = await UserModel.findOne({ email: email });
+
+        if (user) {
+            //Generate New Secret Key for update password 
+            const secret = user._id + process.env.JWT_SECRET_KEY;
+            //Generate jwt token for link it's valid only 5 minutes
+            const token = jwt.sign({ userID: user._id }, secret, { expiresIn: '15m' });
+            //Generate Password Reset Link
+            const link = `http://localhost:3000/api/user/forgotpassword/${user._id}/${token}`;
 
 
-module.exports = { userRegistration, userLogin, changeUserPassword };
+            // Send Email Code
+            let info = await transporter.sendMail({
+                from: process.env.EMAIL_FROM,
+                to: user.email,
+                subject: "Zim- Password Reset",
+                html: `<a href=${link}  >Click Here</a> to Reset your password`
+            })
+
+
+
+            res.send({ "status": "success", "message": "Password reset email sent. Please Check Your Email", "info": info })
+
+            console.log(link)
+        } else {
+            res.send({ "status": "failed", "message": "Email doesn't exists" })
+        }
+    } else {
+        res.send({ "status": "failed", "message": "Email is required" })
+    }
+}
+
+const resetPassword = async (req, res) => {
+    const { password, password_confiramation } = req.body;
+    const { id, token } = req.params;
+
+    //find user from database
+    const user = await UserModel.findOne({ _id: id });
+
+    //create new secret key
+    const secret = user._id + process.env.JWT_SECRET_KEY;
+
+    try {
+        jwt.verify(token, secret);
+        if (password && password_confiramation) {
+            if (password !== password_confiramation) {
+                res.send({ "status": "failed", "message": "Password and Confirm Password dosen't match" })
+            } else {
+                //hashing password
+                const salt = await bcrypt.genSalt(12);
+                const hashPassword = await bcrypt.hash(password, salt);
+
+                await UserModel.findByIdAndUpdate(user._id, {
+                    $set: {
+                        password: hashPassword
+                    }
+                })
+
+                res.send({ "status": "success", "message": "Password Reset Successfully" })
+            }
+
+        } else {
+            res.send({ "status": "failed", "message": "All fields are required" })
+        }
+    } catch (error) {
+        res.send({ "status": "failed", "message": "Invalid Link" })
+    }
+
+}
+
+
+module.exports = { userRegistration, userLogin, changeUserPassword, loggedUser, getResetPasswordLink, resetPassword };

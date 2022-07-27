@@ -1,8 +1,7 @@
 const {Schema, model} = require('mongoose');
 
-
-//Defining Users Schema
-const userSchema = new Schema({
+//Defining Temp User Schema
+const tempUserSchema = new Schema({
     name:{
         type:String,
         required: true,
@@ -22,19 +21,29 @@ const userSchema = new Schema({
         type:Boolean,
         required: true
     },
+    OTP:{
+        type: String,
+        required: true
+    },
+    token:{
+        type:String,
+        require:true,
+        trim: true
+    },
     isVerified:{
         type:Boolean,
         required: true,
-        default:true
+        default:false
     },
+    createdAt:{
+        type: Date, 
+        default: Date.now,
+        expires:610 //10 minutes
+    }
+    
 }, { versionKey: false });
 
+//Creating Temp User Model 
+const TempUserModel = model("temp-users", tempUserSchema);
 
-//Note: { versionKey: false } for remove __v (version number) from database;
-
-//Note: tc meaning Terms & Conditions
-
-//Model
-const UserModel = model("user", userSchema);
-
-module.exports = UserModel;
+module.exports = TempUserModel;

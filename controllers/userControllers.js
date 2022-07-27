@@ -1,8 +1,12 @@
 const UserModel = require('../models/User');
+const TempUserModel = require('../models/tempUser');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const transporter = require('../configs/emailConfig');
 const dotenv = require('dotenv');
+const crypto = require('crypto');
+const emailVerification = require('../configs/accountVerify');
+const TempOTPModel = require('../models/tempOTP');
+
 dotenv.config();
 
 //User Regintration Function 
@@ -17,35 +21,67 @@ const userRegistration = async (req, res) => {
         //validdation input fields
         if (name && email && password && password_confiramation && tc) {
             if (password === password_confiramation) {
+                //Check If account in temp user
+                const tempUser = await TempUserModel.findOne({email:email});
+                if(tempUser){
+                    res.send({ "status": "failed", "message": "Email Registred Recently" });
+                }else{
+                    try {
 
-                try {
+                        // Hashing Password 
+                        const salt = await bcrypt.genSalt(12);
+                        const hashPassword = await bcrypt.hash(password, salt);
+    
+                        // Function to generate OTP
+                        function generateOTP() {
+    
+                            // Declare a digits variable 
+                            // which stores all digits
+                            var digits = '0123456789';
+                            let OTP = '';
+                            for (let i = 0; i < 6; i++ ) {
+                                OTP += digits[Math.floor(Math.random() * 10)];
+                            }
+                            return OTP;
+                        }
+    
+                        const OTP = generateOTP();
 
-                    // Hashing Password 
-                    const salt = await bcrypt.genSalt(12);
-                    const hashPassword = await bcrypt.hash(password, salt)
+                        //Generate Crypto Message
+                        const token = crypto.randomBytes(32).toString('hex');
+    
+                        //Save Data in temp DataBase
+                        const document = new TempUserModel({
+                            name: name,
+                            email: email,
+                            password: hashPassword,
+                            tc: tc,
+                            OTP: OTP,
+                            token: token
+                        })
+                        await document.save();
 
-                    //Save Data in DataBase
-                    const document = new UserModel({
-                        name: name,
-                        email: email,
-                        password: hashPassword,
-                        tc: tc
-                    })
+                        
+                        
+                        // Send Email OTP Code
+                        const info = await emailVerification(email, name, OTP)
+                       
 
-                    await document.save();
+    
+                        // get new registered use
+                        const savedUser = await TempUserModel.findOne({ email: email });
 
-                    // get new registered user
 
-                    const savedUser = await UserModel.findOne({ email: email });
+                        //Creating link for verification
+                        const link = `/user/account-verification/${savedUser._id}/verify/${savedUser.token}?email=${email}`
+    
+                        res.send({ "status": "Pending", "message": "OTP Send Your Email", "link":link, "mailInfo":info})
 
-                    //Generate JWT Token
-                
-                    const token = jwt.sign({ userID: savedUser._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" })
-
-                    res.status(201).send({ "status": "success", "message": "User Registred Successful", "token": token })
-                } catch (error) {
-                    res.send({ "status": "failed", "message": "Unable to register" })
+                    } catch (error) {
+                        res.send({ "status": "failed", "message": "Unable to register"})
+                    }
                 }
+             
             } else {
                 res.send({ "status": "failed", "message": "Password and Confirm Password dosen't match" });
             }
@@ -58,9 +94,65 @@ const userRegistration = async (req, res) => {
 
 
 
+//OTP Verification Function
+const otpVerificationForEmail = async(req, res) =>{
+    const { otp } = req.body;
+    const { id, token } = req.params;
+    const {email}= req.query;
+
+    
+    if(id && token && email){
+        const user = await TempUserModel.findOne({email:email});
+        
+        if(user){
+
+            if((user._id.toString() === id) && (user.token === token)){
+               if(otp){
+                if(otp===user.OTP){
+                    
+                    const document = new UserModel({
+                        name:user.name,
+                        email:user.email,
+                        password:user.password,
+                        tc:user.tc
+                    })
+
+                    await document.save();
+
+                    await TempUserModel.findOneAndDelete({email:email})
+
+                    res.send({ "status": "Success", "message": "Account Verification Successful"})
+
+                }else{
+                    res.send({ "status": "failed", "message": "OTP Dont match"});
+                }
+               }else{
+                res.send({ "status": "failed", "message": "Please Enter Your OTP"});
+               }
+            }else{
+                res.send({ "status": "failed", "message": "inviled link"});
+            }
+        }else{
+            res.send({ "status": "failed", "message": "inviled link" });
+        }       
+    }else{
+        res.send({ "status": "failed", "message": "inviled link" });
+    }
+}
+
+
+
+//Resend OTP code
+const resendOTPcode = async(req, res) =>{
+    
+}
+
+
+
+
 
 //User Login Function 
-const userLogin = async (req, res) => {
+async function userLogin(req, res) {
     try {
         const { email, password } = req.body;
         if (email && password) {
@@ -70,26 +162,26 @@ const userLogin = async (req, res) => {
                 const isMatchPassword = await bcrypt.compare(password, user.password);
                 if ((user.email === email) && isMatchPassword) {
                     //Generate JWT Token 
-                    const token = jwt.sign({ userID: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" })
-                    res.send({ "status": "success", "message": "Login Successful!", "token": token })
+                    const token = jwt.sign({ userID: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
+                    res.send({ "status": "success", "message": "Login Successful!", "token": token });
                 } else {
-                    res.send({ "status": "failed", "message": "Email or Password is not valid" })
+                    res.send({ "status": "failed", "message": "Email or Password is not valid" });
                 }
 
             } else {
-                res.send({ "status": "failed", "message": "You are not registered user" })
+                res.send({ "status": "failed", "message": "You are not registered user" });
             }
         } else {
-            res.send({ "status": "failed", "message": "All fields are required" })
+            res.send({ "status": "failed", "message": "All fields are required" });
         }
     } catch (error) {
-        console.log(error)
+        console.log(error);
     }
 }
 
 
-//Change User Password 
-const changeUserPassword = async (req, res) => {
+//Update User Password 
+const updatePassword = async (req, res) => {
     const { current_password, new_password, password_confiramation } = req.body;
     if (current_password && new_password && password_confiramation) {
         //find user details from database
@@ -119,48 +211,89 @@ const changeUserPassword = async (req, res) => {
     }
 }
 
+
+
 //Get User Details
 const loggedUser = async (req, res) => {
-    res.send({ "user": req.user })
+    res.send({ "user": req.user, 'nai':"hai" })
 }
 
-//Create Reset Password Link
-const getResetPasswordLink = async (req, res) => {
+
+
+
+//Forgot Password Link
+const forgotPassword = async (req, res) => {
     const { email } = req.body;
     if (email) {
-        //Find user from database
-        const user = await UserModel.findOne({ email: email });
 
-        if (user) {
-            //Generate New Secret Key for update password 
-            const secret = user._id + process.env.JWT_SECRET_KEY;
-            //Generate jwt token for link it's valid only 5 minutes
-            const token = jwt.sign({ userID: user._id }, secret, { expiresIn: '15m' });
-            //Generate Password Reset Link
-            const link = `http://localhost:3000/api/user/forgotpassword/${user._id}/${token}`;
+        const mailformat = /^[^]+@[^ ]+\.[a-z]{2,63}$/;
+
+        if(email.match(mailformat)){
+
+            //Find user from database
+            const user = await UserModel.findOne({ email: email});
+
+            if (user) {
+                //Generate New Secret Key for update password 
+                const secret = user._id + process.env.JWT_SECRET_KEY;
+                //Generate jwt token for link it's valid only 10 minutes
+                const token = jwt.sign({ userID: user._id }, secret, { expiresIn: '10m' });
+                 // Function to generate OTP
+                 function generateOTP() {
+    
+                    // Declare a digits variable 
+                    // which stores all digits
+                    var digits = '0123456789';
+                    let OTP = '';
+                    for (let i = 0; i < 6; i++ ) {
+                        OTP += digits[Math.floor(Math.random() * 10)];
+                    }
+                    return OTP;
+                }
+
+                const OTP = generateOTP();
 
 
-            // Send Email Code
-            let info = await transporter.sendMail({
-                from: process.env.EMAIL_FROM,
-                to: user.email,
-                subject: "Zim- Password Reset",
-                html: `<a href=${link}  >Click Here</a> to Reset your password`
-            })
+                const document = new TempOTPModel({
+                    name:user.name,
+                    email:user.email,
+                    OTP: OTP,
+                    token:token,
+                })
+
+                await document.save();
+
+                const getOTPData = await  TempOTPModel.findOne({email:email});
 
 
 
-            res.send({ "status": "success", "message": "Password reset email sent. Please Check Your Email", "info": info })
 
-            console.log(link)
-        } else {
-            res.send({ "status": "failed", "message": "Email doesn't exists" })
+
+                //Generate Password Reset Link
+                const link = `http://localhost:8080/api/user/reset-password/${getOTPData._id}/verify/${token}?email=${email}`;
+
+
+
+
+                res.send({ "status": "success", "message": "OTP Sent your Email. Please Check Your Email", "OTP": OTP, "info": link })
+
+            } else {
+                res.send({ "status": "failed", "message": "Email doesn't exists" })
+            }
+        }else{
+                res.send({ "status": "failed", "message": "Please input valid Email Formate!" })
         }
     } else {
         res.send({ "status": "failed", "message": "Email is required" })
     }
 }
 
+
+
+
+
+
+//Reset Password 
 const resetPassword = async (req, res) => {
     const { password, password_confiramation } = req.body;
     const { id, token } = req.params;
@@ -200,4 +333,4 @@ const resetPassword = async (req, res) => {
 }
 
 
-module.exports = { userRegistration, userLogin, changeUserPassword, loggedUser, getResetPasswordLink, resetPassword };
+module.exports = { userRegistration, userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail,resendOTPcode };

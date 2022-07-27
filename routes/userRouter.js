@@ -2,31 +2,36 @@ const express = require('express');
 const router = express.Router();
 
 const UserController = require('../controllers/userControllers');
-const {userRegistration , userLogin, changeUserPassword, loggedUser, getResetPasswordLink, resetPassword} = UserController;
+const {userRegistration , userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail, resendOTPcode} = UserController;
 
 const checkUserAuth = require('../middlewares/auth-middleware');
 
 //Route level Middleware - to protect route
-router.use('/changepassword', checkUserAuth);
-router.use('/details', checkUserAuth);
+router.use('/update-password', checkUserAuth);
+router.use('/user-details', checkUserAuth);
 
 
 
 //public routes for registretion , login and forget password
 router.post('/register', userRegistration);
 router.post('/login', userLogin);
-router.post('/forgotpassword', getResetPasswordLink)
+
+router.post('/forgot-password', forgotPassword)
 
 
-//
+//daynamic route for reset password
+router.put('/reset-password/:id/verify/:token', resetPassword);
 
-router.put('/resetpassword/:id/:token', resetPassword)
+
+
+//daynamic route for email verification
+router.post('/account-verification/:id/verify/:token', otpVerificationForEmail)
 
 //Protected Route for change password
-router.put('/changepassword', changeUserPassword);
+router.put('/update-password', updatePassword);
 
 //Protected Route for user Details 
-router.get('/details', loggedUser)
+router.get('/user-details', loggedUser)
 
 
 

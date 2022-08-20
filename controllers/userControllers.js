@@ -144,7 +144,27 @@ const otpVerificationForEmail = async(req, res) =>{
 
 //Resend OTP code
 const resendOTPcode = async(req, res) =>{
+    const {id, token, email} = req.body;
+
+    if(id && token && email){
+        //Find otp data from two collection 
+        const tempUser = await TempUserModel.findOne({email:email});
+        const tempOTP = await TempOTPModel.findOne({email:email});
+
+        if(tempUser){
+            res.send({ "status": "success", "message": "It's Temp User" });
+        }
+        else if(tempOTP){
+            res.send({ "status": "success", "message": "It's Temp OTP" });
+        }else{
+            res.send({ "status": "failed", "message": "Something is wrong" });
+        }   
+    }else{
+        res.send({ "status": "failed", "message": "Something is wrong" });
+    }
     
+
+
 }
 
 
@@ -157,10 +177,11 @@ async function userLogin(req, res) {
         const { email, password } = req.body;
         if (email && password) {
             const user = await UserModel.findOne({ email: email });
-            if (user != null) {
+
+            if (user !== null) {
                 //compare password in database and user input
                 const isMatchPassword = await bcrypt.compare(password, user.password);
-                if ((user.email === email) && isMatchPassword) {
+                if (isMatchPassword) {
                     //Generate JWT Token 
                     const token = jwt.sign({ userID: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
                     res.send({ "status": "success", "message": "Login Successful!", "token": token });
@@ -215,8 +236,9 @@ const updatePassword = async (req, res) => {
 
 //Get User Details
 const loggedUser = async (req, res) => {
-    res.send({ "user": req.user, 'nai':"hai" })
+    res.send({ "user": res.user })
 }
+
 
 
 

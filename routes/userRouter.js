@@ -22,7 +22,8 @@ router.post('/forgot-password', forgotPassword)
 //daynamic route for reset password
 router.put('/reset-password/:id/verify/:token', resetPassword);
 
-
+//route for resend OTP
+router.put('/resendOTP', resendOTPcode);
 
 //daynamic route for email verification
 router.post('/account-verification/:id/verify/:token', otpVerificationForEmail)

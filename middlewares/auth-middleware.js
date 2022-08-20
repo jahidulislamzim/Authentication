@@ -14,7 +14,7 @@ const checkUserAuth = async (req, res, next)=>{
             const  {userID} = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
             //Get User From Token
-            req.user = await UserModel.findById(userID).select('-password');
+            res.user = await UserModel.findById(userID).select('-password');
 
             next();
         }catch(error){

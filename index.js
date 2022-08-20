@@ -26,7 +26,9 @@ app.use(express.json());
 app.use('/api/user', userRoutes);
 
 
-
+app.get("/", (req, res) => {
+    res.send("Authzee Server Is Running");
+  });
 
 app.listen(PORT, ()=>{
     console.log(`server is running at http://localhost:${PORT}`);

@@ -14,8 +14,8 @@ dotenv.config();
 app.use(cors());
 
 //Database Connection
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jg5bl.mongodb.net/?retryWrites=true&w=majority`;
-const uri = 'mongodb://0.0.0.0:27017/'
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jg5bl.mongodb.net/?retryWrites=true&w=majority`;
+// const uri = 'mongodb://0.0.0.0:27017/'
 connectDB(uri)
 
 //JSON 

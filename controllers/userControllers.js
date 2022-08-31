@@ -359,8 +359,8 @@ const resetPassword = async (req, res) => {
 
 const testCookies = async (req, res) =>{
     res.cookie('None', 'External', { sameSite: 'none', secure: true })
-    res.cookie('Lax', 'External', { sameSite: 'lax' })
-    res.cookie('Strict', 'External', { sameSite: 'strict' })
+    // res.cookie('Lax', 'External', { sameSite: 'lax', secure: true})
+    // res.cookie('Strict', 'External', { sameSite: 'strict', secure: true })
     res.send('External cookies set.')
 }
 

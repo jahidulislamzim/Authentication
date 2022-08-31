@@ -13,13 +13,13 @@ dotenv.config();
 //CORS Policy
 app.use(
   cors({
-    origin: 'http://localhost:3000',
+    origin: 'https://authzee.netlify.app',
     credentials: true,
   })
 );
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000')
+  res.setHeader('Access-Control-Allow-Origin', 'https://authzee.netlify.app')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
   res.setHeader('Access-Control-Allow-Credentials', true)
   next()

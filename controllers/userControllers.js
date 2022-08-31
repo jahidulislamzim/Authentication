@@ -11,7 +11,8 @@ dotenv.config();
 
 //User Regintration Function 
 const userRegistration = async (req, res) => {
-    const { name, email, password, password_confiramation, tc } = req.body;
+    const { name, email, password, confirmPassword, tc } = req.body;
+    console.log(req.body)
 
     //Check if account with such email address already registered
     const user = await UserModel.findOne({ email: email });
@@ -19,8 +20,8 @@ const userRegistration = async (req, res) => {
         res.send({ "status": "failed", "message": "Email Already Registred" });
     } else {
         //validdation input fields
-        if (name && email && password && password_confiramation && tc) {
-            if (password === password_confiramation) {
+        if (name && email && password && confirmPassword) {
+            if (password === confirmPassword) {
                 //Check If account in temp user
                 const tempUser = await TempUserModel.findOne({email:email});
                 if(tempUser){
@@ -55,7 +56,7 @@ const userRegistration = async (req, res) => {
                             name: name,
                             email: email,
                             password: hashPassword,
-                            tc: tc,
+                            // tc: tc,
                             OTP: OTP,
                             token: token
                         })
@@ -64,7 +65,7 @@ const userRegistration = async (req, res) => {
                         
                         
                         // Send Email OTP Code
-                        const info = await emailVerification(email, name, OTP)
+                        // const info = await emailVerification(email, name, OTP)
                        
 
     
@@ -73,9 +74,10 @@ const userRegistration = async (req, res) => {
 
 
                         //Creating link for verification
-                        const link = `/user/account-verification/${savedUser._id}/verify/${savedUser.token}?email=${email}`
-    
-                        res.send({ "status": "Pending", "message": "OTP Send Your Email", "link":link, "mailInfo":info})
+                        const link = `/user/account-verification/${savedUser._id}/verify/${savedUser.token}/${email}`
+
+                        
+                        res.send({ "status": "Pending", "message": "OTP Send Your Email", "link":link, 'OTP': OTP})
 
                     } catch (error) {
                         res.send({ "status": "failed", "message": "Unable to register"})
@@ -97,8 +99,7 @@ const userRegistration = async (req, res) => {
 //OTP Verification Function
 const otpVerificationForEmail = async(req, res) =>{
     const { otp } = req.body;
-    const { id, token } = req.params;
-    const {email}= req.query;
+    const { id, token, email } = req.params;
 
     
     if(id && token && email){
@@ -108,7 +109,7 @@ const otpVerificationForEmail = async(req, res) =>{
 
             if((user._id.toString() === id) && (user.token === token)){
                if(otp){
-                if(otp===user.OTP){
+                if(otp===Number(user.OTP)){
                     
                     const document = new UserModel({
                         name:user.name,
@@ -120,6 +121,8 @@ const otpVerificationForEmail = async(req, res) =>{
                     await document.save();
 
                     await TempUserModel.findOneAndDelete({email:email})
+
+                    res.cookie('jwt', token);
 
                     res.send({ "status": "Success", "message": "Account Verification Successful"})
 
@@ -354,5 +357,10 @@ const resetPassword = async (req, res) => {
 
 }
 
+const testCookies = async (req, res) =>{
+    res.cookie('jwt', 'test cookies test');
+    res.send({ "status": "failed", "message": "Please Enter Your OTP"})
+}
 
-module.exports = { userRegistration, userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail,resendOTPcode };
+
+module.exports = { userRegistration, userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail,resendOTPcode, testCookies };

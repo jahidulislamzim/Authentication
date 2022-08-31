@@ -19,7 +19,7 @@ const tempUserSchema = new Schema({
     },
     tc:{
         type:Boolean,
-        required: true
+        required: false
     },
     OTP:{
         type: String,

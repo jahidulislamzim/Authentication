@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const UserController = require('../controllers/userControllers');
-const {userRegistration , userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail, resendOTPcode} = UserController;
+const {userRegistration , userLogin, updatePassword, loggedUser, forgotPassword, resetPassword, otpVerificationForEmail, resendOTPcode, testCookies} = UserController;
 
 const checkUserAuth = require('../middlewares/auth-middleware');
 
@@ -26,7 +26,8 @@ router.put('/reset-password/:id/verify/:token', resetPassword);
 router.put('/resendOTP', resendOTPcode);
 
 //daynamic route for email verification
-router.post('/account-verification/:id/verify/:token', otpVerificationForEmail)
+router.post('/account-verification/:id/verify/:token/:email', otpVerificationForEmail)
+router.post('/setCookies', testCookies)
 
 //Protected Route for change password
 router.put('/update-password', updatePassword);

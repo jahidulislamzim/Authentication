@@ -358,8 +358,10 @@ const resetPassword = async (req, res) => {
 }
 
 const testCookies = async (req, res) =>{
-    res.cookie('jwt', 'test cookies test');
-    res.send({ "status": "failed", "message": "Please Enter Your OTP"})
+    res.cookie('None', 'External', { sameSite: 'none', secure: true })
+    res.cookie('Lax', 'External', { sameSite: 'lax' })
+    res.cookie('Strict', 'External', { sameSite: 'strict' })
+    res.send('External cookies set.')
 }
 
 
